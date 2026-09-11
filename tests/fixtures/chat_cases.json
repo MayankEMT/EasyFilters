@@ -1,0 +1,202 @@
+[
+  {
+    "message": "give me flight under 10k",
+    "expect": {
+      "Price": {
+        "Min": "",
+        "Max": "10000"
+      }
+    }
+  },
+  {
+    "message": "flights below 1.5k",
+    "expect": {
+      "Price": {
+        "Min": "",
+        "Max": "1500"
+      }
+    }
+  },
+  {
+    "message": "above 20000 only",
+    "expect": {
+      "Price": {
+        "Min": "20000",
+        "Max": ""
+      }
+    }
+  },
+  {
+    "message": "only indigo non-stop",
+    "expect": {
+      "Airline": [
+        "6E"
+      ],
+      "Stop": [
+        0
+      ]
+    }
+  },
+  {
+    "message": "air india or spicejet",
+    "expect": {
+      "Airline": [
+        "AI",
+        "SG"
+      ]
+    }
+  },
+  {
+    "message": "morning flights please",
+    "expect": {
+      "DepTime": {
+        "Min": "06:00",
+        "Max": "12:00"
+      }
+    }
+  },
+  {
+    "message": "flights after 6pm",
+    "expect": {
+      "DepTime": {
+        "Min": "18:00",
+        "Max": ""
+      }
+    }
+  },
+  {
+    "message": "lands before noon",
+    "expect": {
+      "ArrTime": {
+        "Min": "",
+        "Max": "12:00"
+      }
+    }
+  },
+  {
+    "message": "cheapest flights",
+    "expect": {
+      "SortBy": "Cheapest"
+    }
+  },
+  {
+    "message": "fastest flight",
+    "expect": {
+      "SortBy": "Fastest"
+    }
+  },
+  {
+    "message": "cheapest indigo flight",
+    "expect": {
+      "Airline": [
+        "6E"
+      ],
+      "SortBy": "Cheapest"
+    }
+  },
+  {
+    "message": "refundable only",
+    "expect": {
+      "Refundable": true
+    }
+  },
+  {
+    "message": "flights with wifi",
+    "expect": {
+      "IsWifi": true
+    }
+  },
+  {
+    "message": "via hyderabad",
+    "expect": {
+      "Layover": [
+        "HYD"
+      ]
+    }
+  },
+  {
+    "message": "non stop under 8k cheapest first",
+    "expect": {
+      "Stop": [
+        0
+      ],
+      "Price": {
+        "Min": "",
+        "Max": "8000"
+      },
+      "SortBy": "Cheapest"
+    }
+  },
+  {
+    "message": "delhi to mumbai tomorrow",
+    "expect_status": "no_match"
+  },
+  {
+    "message": "2 adults and 1 child",
+    "expect_status": "no_match"
+  },
+  {
+    "message": "thanks!",
+    "expect_status": "no_match"
+  },
+  {
+    "message": "only vistara",
+    "expect_status": "no_match",
+    "expect_message": "No flights match this preference."
+  },
+  {
+    "message": "with emirates",
+    "expect_status": "no_match",
+    "expect_message": "No flights match this preference."
+  },
+  {
+    "message": "best flights",
+    "expect": {
+      "SortBy": "Best"
+    }
+  },
+  {
+    "message": "most expensive first",
+    "expect": {
+      "SortBy": "Highest Price"
+    }
+  },
+  {
+    "message": "earliest take off",
+    "expect": {
+      "SortBy": "Early Take-off"
+    }
+  },
+  {
+    "message": "last flight out",
+    "expect": {
+      "SortBy": "Late Take-off"
+    }
+  },
+  {
+    "message": "the ones landing earliest",
+    "expect": {
+      "SortBy": "Early Arrival"
+    }
+  },
+  {
+    "message": "which lands latest",
+    "expect": {
+      "SortBy": "Late Arrival"
+    }
+  },
+  {
+    "message": "slowest flights",
+    "expect": {
+      "SortBy": "Slowest"
+    }
+  },
+  {
+    "message": "prefer direct flights",
+    "expect": {
+      "Stop": [
+        0
+      ]
+    }
+  }
+]
