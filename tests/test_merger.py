@@ -179,3 +179,27 @@ def test_clearing_sortby():
     apply(legs, [{"action": "set", "field": "SortBy", "sort": "Fastest"}], facets)
     apply(legs, [{"action": "clear", "field": "SortBy"}], facets)
     assert legs[0]["SortBy"] == ""
+
+
+def test_sort_is_global_not_per_leg():
+    """A sort aimed at one leg still lands on both.
+
+    The consuming API sorts the combined roundtrip, so one leg carrying
+    "Cheapest" while the other carries "" would be incoherent.
+    """
+    legs, facets = _legs(2), _facets(2)
+    ops = [{"action": "set", "field": "SortBy", "sort": "Cheapest", "legs": [0]}]
+    legs, _, applied = apply(legs, ops, facets)
+    assert applied
+    assert legs[0]["SortBy"] == "Cheapest"
+    assert legs[1]["SortBy"] == "Cheapest"
+
+
+def test_clearing_sort_clears_both_legs():
+    legs, facets = _legs(2), _facets(2)
+    for leg in legs:
+        leg["SortBy"] = "Cheapest"
+    ops = [{"action": "clear", "field": "SortBy", "legs": [1]}]
+    legs, _, _ = apply(legs, ops, facets)
+    assert legs[0]["SortBy"] == ""
+    assert legs[1]["SortBy"] == ""

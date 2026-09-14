@@ -20,6 +20,13 @@ from src.schema.filter_json import (
 
 def _target_legs(op: Dict[str, Any], leg_count: int) -> List[int]:
     """Which legs an op applies to. Defaults to all of them."""
+    if op.get("field") in SCALAR_FIELDS:
+        # Sort is one choice for the whole itinerary - the consuming API sorts
+        # the combined roundtrip, not each leg separately. "make the first
+        # flight the cheapest" must not leave the two legs disagreeing, so a
+        # sort always lands on every leg whatever the model aimed it at.
+        return list(range(leg_count))
+
     legs = op.get("legs")
     if not legs:
         return list(range(leg_count))
