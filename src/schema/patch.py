@@ -77,7 +77,8 @@ class FilterOp(BaseModel):
         description=(
             "A named time-of-day window for DepTime/ArrTime instead of min/max: "
             "early morning, morning, late morning, noon, afternoon, evening, "
-            "night, late night, midnight, red eye."
+            "night, late night, midnight. NOT 'red eye' - that is the "
+            "IsRedEyes flag, not a time window."
         ),
     )
     sort: Optional[SortValue] = Field(
