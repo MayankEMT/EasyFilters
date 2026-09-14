@@ -35,6 +35,22 @@ FACET_GATED_FIELDS = (
 # Implausible stop counts are rejected rather than passed through.
 MAX_STOPS = 3
 
+# Fields where "not X" can be rewritten as "everything except X", because the
+# facet list is the complete set of possibilities for the route.
+#
+# Layover is deliberately absent. Its facet lists the airports flights stop at,
+# but a non-stop flight has no layover value at all, and the consuming API ANDs
+# Layover with the rest of the filter - verified on the live site, where picking
+# a layover returns only flights routed through it. So "avoid Hyderabad" written
+# as Layover=[the others] would quietly drop every non-stop flight, which is the
+# opposite of what the traveller wants.
+EXCLUDABLE_FIELDS = (
+    "Airline",
+    "AirCarftType",
+    "TakeOffAirport",
+    "LandingAirport",
+)
+
 # Standalone booleans with no companion array and no `Is*` twin of their own.
 # We can always set these, so they never need a facet.
 BOOL_FIELDS = ("Refundable", "IsWifi", "IsRedEyes")

@@ -7,9 +7,16 @@ ago, and "remove the morning filter" must clear exactly one field.
 from typing import Any, Dict, List, Tuple
 
 from src.core.facets import LegFacets
-from src.core.resolver import resolve_range, resolve_sort, resolve_stops, resolve_values
+from src.core.resolver import (
+    resolve_exclusion,
+    resolve_range,
+    resolve_sort,
+    resolve_stops,
+    resolve_values,
+)
 from src.schema.filter_json import (
     BOOL_FIELDS,
+    EXCLUDABLE_FIELDS,
     FACET_GATED_FIELDS,
     LIST_FIELDS,
     RANGE_FIELDS,
@@ -132,6 +139,27 @@ def apply(
                     leg[field] = merged
                 else:
                     leg[field] = payload
+                applied += 1
+                continue
+
+            if action == "exclude" and field in LIST_FIELDS:
+                if field not in EXCLUDABLE_FIELDS:
+                    # Not expressible as an inclusion list - report it as
+                    # unavailable rather than writing a filter that means
+                    # something else. See EXCLUDABLE_FIELDS for why.
+                    for label in op.get("values") or []:
+                        if str(label) not in rejected:
+                            rejected.append(str(label))
+                    continue
+                surviving, missed = resolve_exclusion(field, op, leg_facets)
+                for label in missed:
+                    if label not in rejected:
+                        rejected.append(label)
+                if not surviving:
+                    # Either nothing resolved, or the user ruled out every
+                    # option the route has. Neither is a filter we can write.
+                    continue
+                leg[field] = surviving
                 applied += 1
                 continue
 

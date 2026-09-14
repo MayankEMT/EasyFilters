@@ -95,6 +95,14 @@ system: |
   ACTIONS
     set       - replace the field (default for a new preference)
     add       - append to a list field, for "also include X"
+    exclude   - rule OUT values on a list field, for "not indigo" / "no
+                spicejet" / "avoid a hyderabad layover" / "anything but the
+                boeing". Put ONLY the values the user REJECTED in `values`:
+                  "no spicejet" -> {action:"exclude", field:"Airline",
+                                    values:["SpiceJet"]}
+                Do NOT list the remaining options yourself - the server works
+                out what survives, and it knows which fields can express an
+                exclusion at all.
     clear     - empty one field, for "remove the airline filter"
     clear_all - reset everything, for "clear all filters" / "start over"
 

@@ -8,7 +8,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-ACTIONS = ("set", "add", "clear", "clear_all")
+ACTIONS = ("set", "add", "exclude", "clear", "clear_all")
 
 OpField = Literal[
     "Price",
@@ -41,9 +41,12 @@ SortValue = Literal[
 
 
 class FilterOp(BaseModel):
-    action: Literal["set", "add", "clear", "clear_all"] = Field(
+    action: Literal["set", "add", "exclude", "clear", "clear_all"] = Field(
         description=(
             "'set' replaces the field, 'add' appends to a list field, "
+            "'exclude' rules OUT the named values on a list field "
+            "(\"not indigo\", \"avoid a hyderabad layover\") - put the values the "
+            "user REJECTED in `values` and let the server work out the rest, "
             "'clear' empties one field, 'clear_all' resets every filter."
         )
     )

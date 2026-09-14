@@ -182,6 +182,30 @@ def resolve_values(field: str, op: Dict[str, Any], facets: LegFacets):
     return accepted, rejected
 
 
+def resolve_exclusion(field: str, op: Dict[str, Any], facets: LegFacets):
+    """Turn "not X" into the facet values that survive it.
+
+    The filter schema can only include, never exclude, so an exclusion is
+    expressed as the complement: everything the caller offered, minus what the
+    user ruled out. Returns (surviving_values, rejected_labels); an empty
+    survivor list means the user ruled out every option there was.
+    """
+    facet_key = FACET_KEY_FOR_FIELD[field]
+    unwanted, rejected = [], []
+    for item in op.get("values") or []:
+        resolved = facets.resolve(facet_key, item)
+        if resolved is None:
+            rejected.append(str(item))
+        elif resolved not in unwanted:
+            unwanted.append(resolved)
+
+    if not unwanted:
+        return [], rejected
+
+    surviving = [v for v in facets.allowed_values(facet_key) if v not in unwanted]
+    return surviving, rejected
+
+
 def _sort_key(text: Any) -> str:
     """Collapse a sort token to letters and digits only.
 

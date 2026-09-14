@@ -203,3 +203,36 @@ def test_clearing_sort_clears_both_legs():
     legs, _, _ = apply(legs, ops, facets)
     assert legs[0]["SortBy"] == ""
     assert legs[1]["SortBy"] == ""
+
+
+def test_exclude_airline_keeps_every_other_option():
+    legs, facets = _legs(), _facets()
+    ops = [{"action": "exclude", "field": "Airline", "values": ["SpiceJet"]}]
+    legs, rejected, applied = apply(legs, ops, facets)
+    assert applied
+    assert "SpiceJet" not in legs[0]["Airline"]
+    assert "IndiGo" in legs[0]["Airline"]
+    assert not rejected
+
+
+def test_excluding_a_layover_is_refused_not_inverted():
+    """"avoid a hyderabad layover" must not become "require BLR or CCU".
+
+    The consuming API ANDs Layover with the rest of the filter, so any Layover
+    list drops every non-stop flight - the opposite of the user's intent.
+    """
+    legs, facets = _legs(), _facets()
+    ops = [{"action": "exclude", "field": "Layover", "values": ["Hyderabad"]}]
+    legs, rejected, applied = apply(legs, ops, facets)
+    assert legs[0]["Layover"] == [], "an exclusion was inverted into an inclusion list"
+    assert applied == 0
+    assert rejected, "the dropped preference must be reported, not silently ignored"
+
+
+def test_excluding_every_option_writes_nothing():
+    legs, facets = _legs(), _facets()
+    allowed = facets[0].allowed_values("airline")
+    ops = [{"action": "exclude", "field": "Airline", "values": list(allowed)}]
+    legs, _, applied = apply(legs, ops, facets)
+    assert legs[0]["Airline"] == []
+    assert applied == 0
