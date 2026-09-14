@@ -35,17 +35,19 @@ FACET_GATED_FIELDS = (
 # Implausible stop counts are rejected rather than passed through.
 MAX_STOPS = 3
 
-# Fields where "not X" can be rewritten as "everything except X", because the
-# facet list is the complete set of possibilities for the route.
+# Fields where "not X" is rewritten as "everything except X", using the facet
+# list as the set of possibilities.
 #
-# Layover is deliberately absent. Its facet lists the airports flights stop at,
-# but a non-stop flight has no layover value at all, and the consuming API ANDs
-# Layover with the rest of the filter - verified on the live site, where picking
-# a layover returns only flights routed through it. So "avoid Hyderabad" written
-# as Layover=[the others] would quietly drop every non-stop flight, which is the
-# opposite of what the traveller wants.
+# Layover carries a known caveat, included here as a product decision: a
+# non-stop flight has no layover value, and the consuming API ANDs Layover with
+# the rest of the filter - verified on the live site, where picking a layover
+# returns only flights routed through it. So "avoid Bengaluru" emitting
+# Layover=[the others] also removes every non-stop flight from the results.
+# Accepted deliberately: the alternative is declining the request outright.
+# It becomes lossless the day the filter API accepts a "no layover" token.
 EXCLUDABLE_FIELDS = (
     "Airline",
+    "Layover",
     "AirCarftType",
     "TakeOffAirport",
     "LandingAirport",

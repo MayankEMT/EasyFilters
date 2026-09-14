@@ -215,18 +215,21 @@ def test_exclude_airline_keeps_every_other_option():
     assert not rejected
 
 
-def test_excluding_a_layover_is_refused_not_inverted():
-    """"avoid a hyderabad layover" must not become "require BLR or CCU".
+def test_excluding_a_layover_sends_the_remaining_ones():
+    """"i dont want bengaluru or kolkata" -> the layovers that are left.
 
-    The consuming API ANDs Layover with the rest of the filter, so any Layover
-    list drops every non-stop flight - the opposite of the user's intent.
+    Note this also removes non-stop flights from the results, because the
+    consuming API ANDs Layover. That trade is deliberate - see
+    EXCLUDABLE_FIELDS.
     """
     legs, facets = _legs(), _facets()
-    ops = [{"action": "exclude", "field": "Layover", "values": ["Hyderabad"]}]
+    allowed = facets[0].allowed_values("layover")
+    ops = [{"action": "exclude", "field": "Layover", "values": [allowed[0]]}]
     legs, rejected, applied = apply(legs, ops, facets)
-    assert legs[0]["Layover"] == [], "an exclusion was inverted into an inclusion list"
-    assert applied == 0
-    assert rejected, "the dropped preference must be reported, not silently ignored"
+    assert applied
+    assert allowed[0] not in legs[0]["Layover"]
+    assert legs[0]["Layover"] == allowed[1:]
+    assert not rejected
 
 
 def test_excluding_every_option_writes_nothing():
