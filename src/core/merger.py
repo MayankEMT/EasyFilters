@@ -109,8 +109,17 @@ def apply(
                 continue
 
             if field in BOOL_FIELDS:
+                wanted = True if op.get("flag") is None else bool(op.get("flag"))
+                if not wanted:
+                    # The flag filters FOR an amenity; there is no "without
+                    # wifi" filter to write. Report it rather than returning
+                    # "applied" with nothing changed. Use action="clear" to
+                    # drop a flag the user set earlier.
+                    if field not in rejected:
+                        rejected.append(field)
+                    continue
                 # Plain booleans - we can always honour these, no facet needed.
-                leg[field] = True if op.get("flag") is None else bool(op.get("flag"))
+                leg[field] = True
                 applied += 1
                 continue
 

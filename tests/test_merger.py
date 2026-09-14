@@ -239,3 +239,23 @@ def test_excluding_every_option_writes_nothing():
     legs, _, applied = apply(legs, ops, facets)
     assert legs[0]["Airline"] == []
     assert applied == 0
+
+
+def test_turning_a_flag_off_is_reported_not_silently_applied():
+    """"no wifi" has no filter to write, so it must not return applied."""
+    legs, facets = _legs(), _facets()
+    ops = [{"action": "set", "field": "IsWifi", "flag": False}]
+    legs, rejected, applied = apply(legs, ops, facets)
+    assert applied == 0
+    assert rejected
+    assert legs[0]["IsWifi"] is False
+
+
+def test_clearing_a_flag_still_works():
+    """"remove the wifi filter" is a clear, and must still be honoured."""
+    legs, facets = _legs(), _facets()
+    legs[0]["IsWifi"] = True
+    ops = [{"action": "clear", "field": "IsWifi"}]
+    legs, _, applied = apply(legs, ops, facets)
+    assert applied
+    assert legs[0]["IsWifi"] is False

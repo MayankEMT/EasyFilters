@@ -81,13 +81,25 @@ system: |
 
   TIME-OF-DAY words: use `preset`, not min/max:
     early morning, morning, late morning, noon, afternoon, evening, night,
-    late night, midnight, red eye
+    late night, midnight
+  "red eye" / "redeye" / "overnight flight" is NOT a preset - it is the
+  IsRedEyes flag: {action:"set", field:"IsRedEyes", flag:true}
 
   STOPS are plain integers and need no allowed-values list:
          "non-stop"/"direct"/"no stops"/"prefer direct" -> Stop ["0"]
          "one stop" -> ["1"]. "up to 1 stop" / "max 1 stop" -> ["0","1"].
          Treat a soft "prefer direct" as the Stop ["0"] filter - there is no
          sort by stop count.
+
+  AIRPORTS: a metro has several airports, and naming one IS a filter.
+    "fly from noida" / "depart from ghaziabad" / "take off from DXN"
+        -> {action:"set", field:"TakeOffAirport", values:["Noida"]}
+    "land at navi mumbai" / "arrive into NMI"
+        -> {action:"set", field:"LandingAirport", values:["Navi Mumbai"]}
+    But a bare route restatement is a SEARCH, not a filter:
+    "delhi to mumbai tomorrow" / "i want to go to mumbai" -> no ops at all.
+    The test is whether the user is naming WHICH airport to use, not where
+    the trip goes.
 
   RANGES: only set the bound the user actually gave. "below 1.5k" is
   range_max="1500" with NO range_min. Never fill an unasked bound with "0".

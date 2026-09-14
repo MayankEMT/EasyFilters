@@ -26,8 +26,10 @@ PRESETS = {
     "night": "21:00-03:00",
     "late night": "23:00-04:00",
     "midnight": "23:00-01:00",
-    "red eye": "00:00-05:00",
 }
+# "red eye" is deliberately not a preset: the filter has an IsRedEyes flag, and
+# a DepTime window here meant "red eye" and "red eye flights only" produced two
+# different filters for the same request.
 
 
 # Presets that legitimately wrap past midnight.
