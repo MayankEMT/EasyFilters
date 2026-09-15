@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Filter · test harness</title>
+<style>
+  :root{
+    --blue:#1a8fe3; --blue-dk:#0f6fb5; --ink:#1d2733; --body:#4a5763;
+    --muted:#8794a1; --line:#e3e8ed; --panel:#fff; --bg:#f2f5f8;
+    --orange:#ff6b2c; --green:#0a9d6e; --amber:#b4701a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--body);
+       font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+  button{font:inherit;cursor:pointer}
+
+  /* ---------- search header ---------- */
+  header{background:linear-gradient(100deg,#1a8fe3,#49c2f0);padding:14px 22px 18px;color:#fff}
+  .trip{display:flex;gap:22px;align-items:center;margin-bottom:12px;font-size:13px;font-weight:600}
+  .trip label{display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
+  .fields{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .field{display:flex;flex-direction:column;gap:4px;position:relative}
+  .field span{font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.85;font-weight:600}
+  .field input,.field select{border:0;border-radius:4px;padding:11px 12px;font-size:15px;
+       color:var(--ink);min-width:150px;background:#fff}
+  .field input:disabled{background:#e7eef4;color:#9aa8b4}
+  #searchBtn{background:transparent;border:2px solid #fff;color:#fff;border-radius:24px;
+       padding:11px 34px;font-weight:700;letter-spacing:.06em}
+  #searchBtn:hover{background:#fff;color:var(--blue-dk)}
+  .ac{position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:0 0 4px 4px;
+      box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:40;max-height:260px;overflow:auto;display:none}
+  .ac div{padding:9px 12px;color:var(--ink);cursor:pointer;font-size:13px}
+  .ac div:hover{background:#eef6fd}
+  .ac .cd{color:var(--muted);float:right;font-weight:600}
+
+  /* ---------- layout ---------- */
+  main{display:grid;grid-template-columns:274px minmax(0,1fr);gap:18px;
+       padding:18px 22px 150px;max-width:1420px;margin:0 auto}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+  .panel h2{margin:0;padding:13px 15px;font-size:15px;color:var(--ink);
+       border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  #reset{background:none;border:0;color:var(--blue);font-size:12.5px;font-weight:600}
+
+  /* ---------- filter controls ---------- */
+  .fgroup{padding:12px 15px;border-bottom:1px solid var(--line)}
+  .fgroup:last-child{border-bottom:0}
+  .fgroup h3{margin:0 0 9px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .ck{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;font-size:13.5px;color:var(--ink)}
+  .ck input{accent-color:var(--blue);width:15px;height:15px;cursor:pointer;flex:none}
+  .ck span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .scroll{max-height:none}
+  .scroll.tall{max-height:168px;overflow-y:auto;padding-right:4px}
+  .twrap{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .tw{border:1px solid var(--line);background:#fff;border-radius:4px;padding:6px 4px;
+      font-size:12px;color:var(--body)}
+  .tw:hover{border-color:var(--blue)}
+  .tw.on{background:#eef6fd;border-color:var(--blue);color:var(--blue-dk);font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--blue)}
+  .rowends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:2px}
+  .rowends span:last-child{color:var(--ink);font-weight:600}
+
+  /* ---------- results ---------- */
+  .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px}
+  .count{font-size:14px;color:var(--ink)}
+  .count b{font-size:17px}
+  .sortnote{font-size:11.5px;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+  #sortbar{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+  .sortbtn{border:1px solid var(--line);background:#fff;border-radius:5px;padding:7px 13px;
+      font-size:13px;color:var(--body)}
+  .sortbtn:hover{border-color:var(--blue)}
+  .sortbtn.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  #sortMore{border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:13px;color:var(--body)}
+
+  .flight{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px 16px;
+          margin-bottom:10px;display:grid;grid-template-columns:190px 92px 132px 92px 1fr auto;
+          gap:14px;align-items:center}
+  @media(max-width:1100px){.flight{grid-template-columns:1fr 1fr;row-gap:10px}}
+  .al{font-weight:600;color:var(--ink)}
+  .al small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .tm{font-size:19px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+  .tm small{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
+  .dur{text-align:center;font-size:12.5px;color:var(--muted)}
+  .dur b{display:block;color:var(--ink);font-size:13.5px;font-weight:600;
+         border-bottom:1px solid var(--line);padding-bottom:3px;margin-bottom:3px}
+  .pr{font-size:19px;font-weight:700;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+  .tagrow{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;background:#f3f6f9;color:var(--muted);border-radius:3px;padding:2px 7px}
+  .tag.rf{background:#e8f7f1;color:var(--green)}
+
+  /* ---------- chat ---------- */
+  #chat{position:fixed;right:20px;bottom:20px;width:396px;max-width:calc(100vw - 32px);
+        background:#fff;border:1px solid var(--line);border-radius:10px;
+        box-shadow:0 16px 44px rgba(20,40,60,.22);display:flex;flex-direction:column;z-index:60}
+  #chat h2{background:var(--ink);color:#fff;margin:0;padding:11px 14px;font-size:13.5px;
+        border-radius:9px 9px 0 0;display:flex;justify-content:space-between;align-items:center}
+  #chat h2 button{background:none;border:0;color:#fff;opacity:.75;font-size:16px}
+  #log{padding:12px 14px;max-height:270px;overflow:auto;display:flex;flex-direction:column;gap:9px}
+  .msg{max-width:88%;padding:8px 11px;border-radius:9px;font-size:13.5px;white-space:pre-wrap}
+  .me{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:2px}
+  .bot{align-self:flex-start;background:#f1f4f7;color:var(--ink);border-bottom-left-radius:2px}
+  .bot.warn{background:#fdf1e4;color:var(--amber)}
+  .bot.err{background:#fdeaea;color:#b03030}
+  #jsonbox{border-top:1px solid var(--line);max-height:0;overflow:auto;transition:max-height .18s}
+  #jsonbox.open{max-height:250px}
+  #jsonbox pre{margin:0;padding:11px 13px;font:11.5px/1.5 ui-monospace,Consolas,monospace;
+        color:#243b46;background:#f8fafb;white-space:pre-wrap;word-break:break-word}
+  #jsontoggle{width:100%;border:0;border-top:1px solid var(--line);background:#fafcfd;
+        padding:7px;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+  #inrow{display:flex;gap:8px;padding:11px;border-top:1px solid var(--line)}
+  #prompt{flex:1;border:1px solid var(--line);border-radius:6px;padding:9px 11px;font-size:13.5px}
+  #send{background:var(--orange);color:#fff;border:0;border-radius:6px;padding:9px 16px;font-weight:600}
+  #send:disabled{opacity:.5}
+  .hint{padding:0 14px 10px;font-size:11.5px;color:var(--muted)}
+  .hint b{color:var(--blue-dk);cursor:pointer;font-weight:500}
+  .hint b:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="trip">
+    <label><input type="radio" name="trip" value="oneway" checked> One Way</label>
+    <label><input type="radio" name="trip" value="roundtrip"> Round Trip</label>
+  </div>
+  <div class="fields">
+    <div class="field">
+      <span>From</span>
+      <input id="origin" value="Delhi (DEL)" autocomplete="off">
+      <div class="ac" id="acOrigin"></div>
+    </div>
+    <div class="field">
+      <span>To</span>
+      <input id="destination" value="Mumbai (BOM)" autocomplete="off">
+      <div class="ac" id="acDest"></div>
+    </div>
+    <div class="field"><span>Departure</span><input id="date" type="date"></div>
+    <div class="field"><span>Return</span><input id="returnDate" type="date" disabled></div>
+    <div class="field"><span>Travellers</span>
+      <select id="adults">
+        <option value="1">1 Traveller</option><option value="2">2 Travellers</option>
+        <option value="3">3 Travellers</option><option value="4">4 Travellers</option>
+      </select>
+    </div>
+    <div class="field"><span>Class</span>
+      <select id="cabin"><option>Economy</option><option>Business</option><option>Premium Economy</option></select>
+    </div>
+    <button id="searchBtn">SEARCH</button>
+  </div>
+</header>
+
+<main>
+  <aside class="panel" id="filters">
+    <h2>Filters <button id="reset">Reset</button></h2>
+    <div id="filterBody"><div class="fgroup"><p style="color:#8794a1;font-style:italic">Run a search to load filters.</p></div></div>
+  </aside>
+
+  <section>
+    <div id="sortbar"></div>
+    <div class="bar">
+      <div class="count" id="count">Searching…</div>
+      <div class="sortnote" id="sortnote"></div>
+    </div>
+    <div id="results"></div>
+  </section>
+</main>
+
+<div id="chat">
+  <h2>Filter by chat <button id="min" title="collapse">–</button></h2>
+  <div id="log"><div class="msg bot">Tick filters on the left, or type here — both edit the same filter JSON, and the chat builds on whatever you have ticked.</div></div>
+  <div class="hint">
+    Try: <b>under 8k non stop</b> · <b>morning flights</b> · <b>no spicejet</b> · <b>cheapest</b> · <b>less than 3 hours</b>
+  </div>
+  <button id="jsontoggle">show filter json</button>
+  <div id="jsonbox"><pre id="json">{}</pre></div>
+  <div id="inrow">
+    <input id="prompt" placeholder="e.g. under 10k, non stop, morning" autocomplete="off">
+    <button id="send">Send</button>
+  </div>
+</div>
+
+<script src="/static/filters.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+
+/* state.filter is the ONE source of truth - the same 25-key JSON the API
+ * speaks. The panel and the chat both edit it; nothing else stores state. */
+const state = { facets:null, ranges:null, filter:emptyFilter(), tripType:"oneway", busy:false };
+
+const d = new Date(); d.setDate(d.getDate()+60);
+$("#date").value = d.toISOString().slice(0,10);
+
+document.querySelectorAll('input[name=trip]').forEach(r => r.onchange = () => {
+  state.tripType = r.value;
+  const rt = state.tripType === "roundtrip";
+  $("#returnDate").disabled = !rt;
+  if (rt && !$("#returnDate").value) {
+    const r2 = new Date($("#date").value); r2.setDate(r2.getDate()+5);
+    $("#returnDate").value = r2.toISOString().slice(0,10);
+  }
+});
+
+/* ---------- autosuggest ---------- */
+function autocomplete(inputSel, boxSel){
+  const input = $(inputSel), box = $(boxSel);
+  let timer;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2){ box.style.display = "none"; return; }
+    timer = setTimeout(async () => {
+      try{
+        const r = await fetch("/api/suggest?q=" + encodeURIComponent(q));
+        const {results} = await r.json();
+        if (!results.length){ box.style.display="none"; return; }
+        box.innerHTML = results.map(x =>
+          `<div data-code="${x.code}" data-city="${x.city}">${x.city||x.name}
+           <span class="cd">${x.code}</span></div>`).join("");
+        box.style.display = "block";
+      }catch{ box.style.display="none"; }
+    }, 220);
+  });
+  box.addEventListener("click", e => {
+    const row = e.target.closest("div[data-code]");
+    if (!row) return;
+    input.value = `${row.dataset.city} (${row.dataset.code})`;
+    input.dataset.code = row.dataset.code;
+    box.style.display = "none";
+  });
+  input.addEventListener("blur", () => setTimeout(()=>box.style.display="none", 180));
+}
+autocomplete("#origin", "#acOrigin");
+autocomplete("#destination", "#acDest");
+
+const code = sel => {
+  const el = $(sel);
+  const m = el.value.match(/\(([A-Z]{3})\)/);
+  return (m ? m[1] : el.dataset.code || el.value).trim().toUpperCase();
+};
+
+/* ---------- search ---------- */
+function hasAnyFilter(f){
+  return ["Price","DepTime","ArrTime","Duration","Stop","Airline","Layover",
+          "AirCarftType","TakeOffAirport","LandingAirport"].some(k => f["Is"+k])
+      || f.Refundable || f.IsWifi || f.IsRedEyes || !!f.SortBy;
+}
+
+async function runSearch(freshFacets){
+  if (state.busy) return null;
+  state.busy = true;
+  $("#count").textContent = "Searching…";
+  try{
+    const body = {
+      origin: code("#origin"), destination: code("#destination"),
+      date: $("#date").value,
+      returnDate: state.tripType === "roundtrip" ? $("#returnDate").value : null,
+      adults: +$("#adults").value, children: 0, infants: 0,
+      cabin: $("#cabin").value,
+      filter: freshFacets ? null : (hasAnyFilter(state.filter) ? state.filter : null)
+    };
+    const r = await fetch("/api/search", {method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const data = await r.json();
+    if (data.facets){ state.facets = data.facets; state.ranges = data.ranges; }
+    renderResults(data);
+    redrawPanel();
+    return data;
+  }catch(err){
+    $("#count").textContent = "";
+    $("#results").innerHTML = `<div class="panel" style="padding:18px;color:#b03030">${err.message}</div>`;
+    say("Search failed: " + err.message, "err");
+    return null;
+  }finally{ state.busy = false; }
+}
+
+function renderResults(data){
+  const list = data.outbound || [];
+  $("#count").innerHTML = `<b>${list.length}</b> of ${data.totals.outbound} flights`;
+  const via = data.appliedVia || {};
+  const s = (via.searchApi||[]).join(", "), h = (via.harness||[]).join(", ");
+  $("#sortnote").textContent = (s||h) ? `search api: ${s||"—"}   ·   harness: ${h||"—"}` : "";
+  $("#results").innerHTML = list.length ? list.map(f => `
+    <div class="flight">
+      <div class="al">${f.airlineName}<small>${f.flightNumber}</small></div>
+      <div class="tm">${f.departureTime||"--"}<small>${f.originCity||f.origin}</small></div>
+      <div class="dur"><b>${f.journeyTime||"--"}</b>${f.stops===0?"Nonstop":f.stops+" stop"}${f.layovers.length?" · "+f.layovers.join(", "):""}</div>
+      <div class="tm">${f.arrivalTime||"--"}<small>${f.destinationCity||f.destination}</small></div>
+      <div class="tagrow">
+        ${f.aircraft.map(a=>`<span class="tag">${a}</span>`).join("")}
+        ${f.refundable?'<span class="tag rf">Refundable</span>':""}
+        ${f.baggage?`<span class="tag">${f.baggage}</span>`:""}
+      </div>
+      <div class="pr">₹${(f.price||0).toLocaleString("en-IN")}</div>
+    </div>`).join("")
+    : `<div class="panel" style="padding:26px;text-align:center;color:#8794a1">
+         No flights match this filter.</div>`;
+}
+
+/* A panel edit and a chat reply both land here. */
+function onFilterChange(){
+  $("#json").textContent = JSON.stringify(state.filter, null, 1);
+  runSearch(false);
+}
+
+function redrawPanel(){
+  if (!state.facets) return;
+  const keep = $("#filterBody").scrollTop;
+  buildPanel(state.facets, state.ranges, state.filter, onFilterChange);
+  buildSortBar(state.filter, onFilterChange);
+  $("#filterBody").scrollTop = keep;
+  $("#json").textContent = JSON.stringify(state.filter, null, 1);
+}
+
+/* ---------- chat ---------- */
+function say(text, cls){
+  const el = document.createElement("div");
+  el.className = cls === "me" ? "msg me" : "msg bot" + (cls ? " " + cls : "");
+  el.textContent = text;
+  $("#log").appendChild(el);
+  $("#log").scrollTop = $("#log").scrollHeight;
+}
+
+async function ask(){
+  const text = $("#prompt").value.trim();
+  if (!text) return;
+  if (!state.facets){ say("Run a search first — the filter needs the options from the results.", "warn"); return; }
+  say(text, "me"); $("#prompt").value = ""; $("#send").disabled = true;
+  try{
+    /* currentFilter is whatever the panel currently shows, so the chat builds
+     * on your clicks rather than starting over. */
+    const r = await fetch("/api/chat", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({message:text, tripType:state.tripType, facets:state.facets,
+                            currentFilter: hasAnyFilter(state.filter) ? state.filter : null})});
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const d = await r.json();
+    if (d.status === "applied"){
+      state.filter = Array.isArray(d.filter) ? d.filter[0] : d.filter;
+      redrawPanel();
+      const res = await runSearch(false);
+      say(d.message || `Applied — ${res ? (res.outbound||[]).length : "?"} flights match.`,
+          d.message ? "warn" : null);
+    } else {
+      $("#json").textContent = JSON.stringify(d.filter, null, 1);
+      say(d.message || "Nothing to apply.", "warn");
+    }
+  }catch(err){ say("Error: " + err.message, "err"); }
+  finally{ $("#send").disabled = false; $("#prompt").focus(); }
+}
+
+/* ---------- wiring ---------- */
+$("#searchBtn").onclick = () => { state.filter = emptyFilter(); runSearch(true); };
+$("#reset").onclick    = () => { state.filter = emptyFilter(); redrawPanel(); runSearch(false); };
+$("#send").onclick = ask;
+$("#prompt").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+$("#jsontoggle").onclick = () => {
+  const b = $("#jsonbox"); b.classList.toggle("open");
+  $("#jsontoggle").textContent = b.classList.contains("open") ? "hide filter json" : "show filter json";
+};
+$("#min").onclick = () => {
+  const hide = $("#log").style.display !== "none";
+  ["#log","#inrow","#jsontoggle","#jsonbox"].forEach(s => $(s).style.display = hide ? "none" : "");
+  document.querySelector(".hint").style.display = hide ? "none" : "";
+  $("#min").textContent = hide ? "+" : "–";
+};
+document.querySelectorAll(".hint b").forEach(b => b.onclick = () => {
+  $("#prompt").value = b.textContent; ask();
+});
+
+runSearch(true);
+</script>
+</body>
+</html>
