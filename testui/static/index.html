@@ -62,12 +62,22 @@
   .rowends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:2px}
   .rowends span:last-child{color:var(--ink);font-weight:600}
 
+  /* ---------- headline cards ---------- */
+  #headline{display:flex;gap:11px;margin-bottom:14px;flex-wrap:wrap}
+  .hcard{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);
+      border-radius:7px;padding:11px 20px 11px 15px;min-width:186px;text-align:left}
+  .hcard:hover{border-color:var(--blue)}
+  .hcard.on{border-color:var(--blue);box-shadow:0 0 0 2px #d9ecfa inset}
+  .hcard .hi{font-size:17px;color:var(--blue-dk)}
+  .hl{font-size:12px;letter-spacing:.07em;color:var(--muted);font-weight:700;line-height:1.35}
+  .hl small{display:block;font-size:13px;letter-spacing:0;color:var(--ink);font-weight:600}
+
   /* ---------- results ---------- */
-  .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px}
+  .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:10px}
   .count{font-size:14px;color:var(--ink)}
   .count b{font-size:17px}
-  .sortnote{font-size:11.5px;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
-  #sortbar{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+  .sortnote{font-size:11.5px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;margin-bottom:10px}
+  #sortbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
   .sortbtn{border:1px solid var(--line);background:#fff;border-radius:5px;padding:7px 13px;
       font-size:13px;color:var(--body)}
   .sortbtn:hover{border-color:var(--blue)}
@@ -75,17 +85,34 @@
   #sortMore{border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:13px;color:var(--body)}
 
   .flight{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px 16px;
-          margin-bottom:10px;display:grid;grid-template-columns:190px 92px 132px 92px 1fr auto;
-          gap:14px;align-items:center}
-  @media(max-width:1100px){.flight{grid-template-columns:1fr 1fr;row-gap:10px}}
-  .al{font-weight:600;color:var(--ink)}
+          margin-bottom:10px;display:grid;
+          grid-template-columns:196px 96px 136px 96px 1fr 128px;
+          grid-template-areas:"al dep dur arr pr book" "tags tags tags tags tags tags";
+          gap:12px 14px;align-items:center}
+  @media(max-width:1100px){.flight{grid-template-columns:1fr 1fr;
+          grid-template-areas:"al al" "dep arr" "dur dur" "pr book" "tags tags";row-gap:10px}}
+  .al{grid-area:al;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:9px}
   .al small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  .logo{flex:none;width:31px;height:31px;border-radius:5px;background:#eef3f8;color:var(--blue-dk);
+      font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
+      letter-spacing:.03em}
+  .flight .tm:nth-of-type(1){grid-area:dep}
+  .dur{grid-area:dur}
+  .prcell{grid-area:pr;text-align:right}
+  .prcell small{display:block;font-size:11.5px;color:var(--muted);font-weight:500}
+  .bookcell{grid-area:book;text-align:right}
+  .book{display:inline-block;background:var(--orange);color:#fff;text-decoration:none;
+      border-radius:22px;padding:9px 22px;font-size:13.5px;font-weight:600;white-space:nowrap}
+  .book:hover{background:#ef5c1d}
+  .book.dis{background:#dfe5ea;color:#97a4ae;cursor:default}
+  .tagrow{grid-area:tags;border-top:1px dashed var(--line);padding-top:9px}
+  .dur small{display:block;font-size:11.5px;color:var(--muted)}
   .tm{font-size:19px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
   .tm small{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
   .dur{text-align:center;font-size:12.5px;color:var(--muted)}
   .dur b{display:block;color:var(--ink);font-size:13.5px;font-weight:600;
          border-bottom:1px solid var(--line);padding-bottom:3px;margin-bottom:3px}
-  .pr{font-size:19px;font-weight:700;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+  .pr{font-size:20px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
   .tagrow{display:flex;gap:6px;flex-wrap:wrap}
   .tag{font-size:11px;background:#f3f6f9;color:var(--muted);border-radius:3px;padding:2px 7px}
   .tag.rf{background:#e8f7f1;color:var(--green)}
@@ -158,11 +185,12 @@
   </aside>
 
   <section>
-    <div id="sortbar"></div>
+    <div id="headline"></div>
     <div class="bar">
       <div class="count" id="count">Searching…</div>
-      <div class="sortnote" id="sortnote"></div>
+      <div id="sortbar"></div>
     </div>
+    <div class="sortnote" id="sortnote"></div>
     <div id="results"></div>
   </section>
 </main>
@@ -276,24 +304,50 @@ async function runSearch(freshFacets){
   }finally{ state.busy = false; }
 }
 
+function renderHeadline(h){
+  const box = $("#headline");
+  if (!h || !h.Cheapest){ box.innerHTML = ""; return; }
+  const icons = {Best:"&#128077;", Cheapest:"&#8377;", Fastest:"&#9201;"};
+  box.innerHTML = ["Best","Cheapest","Fastest"].filter(k=>h[k]).map(k => `
+    <button class="hcard ${state.filter.SortBy===k?"on":""}" data-sort="${k}">
+      <span class="hi">${icons[k]}</span>
+      <span class="hl">${k.toUpperCase()}
+        <small>₹${Number(h[k].price).toLocaleString("en-IN")} | ${h[k].duration}</small></span>
+    </button>`).join("");
+  box.querySelectorAll("button[data-sort]").forEach(b => b.onclick = () => {
+    state.filter.SortBy = state.filter.SortBy === b.dataset.sort ? "" : b.dataset.sort;
+    state.filter.IsSortBy = !!state.filter.SortBy;
+    onFilterChange();
+  });
+}
+
 function renderResults(data){
   const list = data.outbound || [];
+  renderHeadline(data.headline);
   $("#count").innerHTML = `<b>${list.length}</b> of ${data.totals.outbound} flights`;
   const via = data.appliedVia || {};
   const s = (via.searchApi||[]).join(", "), h = (via.harness||[]).join(", ");
   $("#sortnote").textContent = (s||h) ? `search api: ${s||"—"}   ·   harness: ${h||"—"}` : "";
   $("#results").innerHTML = list.length ? list.map(f => `
     <div class="flight">
-      <div class="al">${f.airlineName}<small>${f.flightNumber}</small></div>
-      <div class="tm">${f.departureTime||"--"}<small>${f.originCity||f.origin}</small></div>
-      <div class="dur"><b>${f.journeyTime||"--"}</b>${f.stops===0?"Nonstop":f.stops+" stop"}${f.layovers.length?" · "+f.layovers.join(", "):""}</div>
-      <div class="tm">${f.arrivalTime||"--"}<small>${f.destinationCity||f.destination}</small></div>
+      <div class="al"><span class="logo">${(f.airlineCode||"").slice(0,2)}</span>
+        <span>${f.airlineName}<small>${f.flightNumber}</small></span></div>
+      <div class="tm">${f.departureTime||"--"}<small>${f.originCity||f.origin}(${f.origin})</small></div>
+      <div class="dur"><b>${f.journeyTime||"--"}</b>${f.stops===0?"Nonstop":f.stops+" stop"}${f.layovers.length?"<small>via "+f.layovers.join(", ")+"</small>":""}</div>
+      <div class="tm">${f.arrivalTime||"--"}<small>${f.destinationCity||f.destination}(${f.destination})</small></div>
+      <div class="prcell">
+        <div class="pr">₹${(f.price||0).toLocaleString("en-IN")}</div>
+        ${f.fareName?`<small>${f.fareName}</small>`:""}
+      </div>
+      <div class="bookcell">
+        ${f.deepLink?`<a class="book" href="${f.deepLink}" target="_blank" rel="noopener">Book Now</a>`
+                    :`<span class="book dis">Book Now</span>`}
+      </div>
       <div class="tagrow">
         ${f.aircraft.map(a=>`<span class="tag">${a}</span>`).join("")}
-        ${f.refundable?'<span class="tag rf">Refundable</span>':""}
-        ${f.baggage?`<span class="tag">${f.baggage}</span>`:""}
+        ${f.refundable?'<span class="tag rf">Refundable</span>':'<span class="tag">Non-refundable</span>'}
+        ${f.baggage?`<span class="tag">Baggage ${f.baggage}</span>`:""}
       </div>
-      <div class="pr">₹${(f.price||0).toLocaleString("en-IN")}</div>
     </div>`).join("")
     : `<div class="panel" style="padding:26px;text-align:center;color:#8794a1">
          No flights match this filter.</div>`;

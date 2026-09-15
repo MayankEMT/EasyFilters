@@ -123,6 +123,8 @@ def shape(flight: Dict[str, Any]) -> Dict[str, Any]:
         "price": _price(flight),
         "cabin": first.get("cabin"),
         "baggage": first.get("baggage"),
+        "fareName": (flight.get("fare_options") or [{}])[0].get("fare_name"),
+        "deepLink": flight.get("deepLink"),
     }
 
 
@@ -286,6 +288,25 @@ def post_filter(flights: List[Dict[str, Any]], flt: Dict[str, Any]) -> List[Dict
     return out
 
 
+def headline(flights: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """The BEST / CHEAPEST / FASTEST cards, computed from the real results."""
+    if not flights:
+        return {}
+    priced = [f for f in flights if f["price"] is not None]
+    timed = [f for f in flights if f["durationMinutes"]]
+    cheapest = min(priced, key=lambda f: f["price"]) if priced else None
+    fastest = min(timed, key=lambda f: f["durationMinutes"]) if timed else None
+    best = None
+    if priced and timed:
+        lo_p = min(f["price"] for f in priced)
+        lo_d = min(f["durationMinutes"] for f in timed)
+        scored = [f for f in flights if f["price"] and f["durationMinutes"]]
+        if scored:
+            best = min(scored, key=lambda f: f["price"] / lo_p + f["durationMinutes"] / lo_d)
+    card = lambda f: {"price": f["price"], "duration": f["journeyTime"]} if f else None
+    return {"Best": card(best), "Cheapest": card(cheapest), "Fastest": card(fastest)}
+
+
 # --------------------------------------------------------------------------
 # routes
 # --------------------------------------------------------------------------
@@ -375,6 +396,7 @@ async def search(req: SearchRequest):
                         if leg0.get(k)] + (["SortBy"] if leg0.get("SortBy") else []),
         },
     }
+    payload["headline"] = headline(payload["outbound"])
     if facets_source:
         payload["facets"] = build_facets(outbound)
         if inbound:
