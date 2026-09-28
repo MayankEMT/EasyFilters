@@ -5,18 +5,22 @@ from src.routes import filter_routes
 
 app = FastAPI(title="EasyFilters - Smart Flight Filter API")
 
-# The only site allowed to call this API from a browser. Anything else gets no
-# CORS headers back and is blocked by the browser. Add an origin here to widen it.
-ALLOWED_ORIGINS = ["https://www.easemytrip.com"]
+# Open to every origin: the consuming teams call this from localhost, staging
+# and production, and the endpoint carries no auth and returns no user data.
+#
+# allow_credentials stays False deliberately. With it True, Starlette cannot
+# send a literal "*" and instead echoes back whatever Origin asked, which also
+# permits credentialed cross-origin requests - strictly more permissive than
+# this. If an auth header or cookie is ever added to this API, narrow
+# allow_origins to a real list before turning credentials on.
+ALLOWED_ORIGINS = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    # Nothing here reads cookies or an auth header, so credentialed cross-origin
-    # requests are refused rather than permitted by default.
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["content-type"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 app.include_router(filter_routes.router)
