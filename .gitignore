@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 uv.lock
+
+# stray logs from running the harness
+testui/out.log
+*.log
