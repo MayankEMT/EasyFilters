@@ -25,8 +25,8 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("case", CASES, ids=[c["message"] for c in CASES])
-def test_live_case(case):
-    result = parse_message(case["message"], "oneway", FACETS)
+async def test_live_case(case):
+    result = await parse_message(case["message"], "oneway", FACETS)
 
     expected_status = case.get("expect_status", "applied")
     assert result["status"] == expected_status, result

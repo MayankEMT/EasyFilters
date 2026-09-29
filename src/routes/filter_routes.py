@@ -12,16 +12,9 @@ router = APIRouter()
 
 
 @router.post("/api/smart-filter/parse", response_model=FilterParseResponse)
-def parse_filter(req: FilterParseRequest):
-    """Deliberately sync, not async.
-
-    parse_message blocks for the whole LLM call - a second or two. Declared
-    `async def`, that blocks the event loop and the worker serves exactly one
-    request at a time. Declared `def`, FastAPI runs it in a threadpool and the
-    worker handles many at once.
-    """
+async def parse_filter(req: FilterParseRequest):
     try:
-        result = parse_message(
+        result = await parse_message(
             message=req.message,
             trip_type=req.trip_type,
             raw_facets=req.facets,

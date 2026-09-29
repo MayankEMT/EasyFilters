@@ -4,21 +4,23 @@ import pytest
 from src.core.facets import FacetError
 from src.schema.filter_json import empty_filter
 from src.service import parse_message
+
+pytestmark = pytest.mark.anyio
 from src.utils import messages as msg
 
 
-def test_missing_facets_is_a_400(facets):
+async def test_missing_facets_is_a_400(facets):
     for bad in (None, {}, []):
         with pytest.raises(FacetError):
-            parse_message("under 10k", "oneway", bad)
+            await parse_message("under 10k", "oneway", bad)
 
 
-def test_facets_with_no_usable_field_is_a_400():
+async def test_facets_with_no_usable_field_is_a_400():
     with pytest.raises(FacetError):
-        parse_message("under 10k", "oneway", {"somethingElse": [1, 2]})
+        await parse_message("under 10k", "oneway", {"somethingElse": [1, 2]})
 
 
-def test_no_filter_intent_returns_currentfilter_untouched(facets, stub_llm):
+async def test_no_filter_intent_returns_currentfilter_untouched(facets, stub_llm):
     """A plain search or a greeting must never wipe the active filters."""
     stub_llm({"has_filter_intent": False, "ops": []})
 
@@ -26,7 +28,7 @@ def test_no_filter_intent_returns_currentfilter_untouched(facets, stub_llm):
     active["Airline"] = ["IndiGo"]
     active["IsAirline"] = True
 
-    result = parse_message("delhi to mumbai tomorrow", "oneway", facets, current_filter=active)
+    result = await parse_message("delhi to mumbai tomorrow", "oneway", facets, current_filter=active)
 
     assert result["status"] == "no_match"
     assert result["message"] == msg.NO_FILTER_INTENT
@@ -34,20 +36,20 @@ def test_no_filter_intent_returns_currentfilter_untouched(facets, stub_llm):
     assert result["filter"]["IsAirline"] is True
 
 
-def test_empty_message_short_circuits_without_calling_the_llm(facets):
+async def test_empty_message_short_circuits_without_calling_the_llm(facets):
     # No stub installed: if this reached the LLM it would fail on a missing key.
-    result = parse_message("   ", "oneway", facets)
+    result = await parse_message("   ", "oneway", facets)
     assert result["status"] == "no_match"
     assert result["message"] == msg.NO_FILTER_INTENT
 
 
-def test_intent_true_but_no_ops_is_no_match(facets, stub_llm):
+async def test_intent_true_but_no_ops_is_no_match(facets, stub_llm):
     stub_llm({"has_filter_intent": True, "ops": []})
-    result = parse_message("hmm", "oneway", facets)
+    result = await parse_message("hmm", "oneway", facets)
     assert result["status"] == "no_match"
 
 
-def test_value_outside_facets_returns_no_match_and_preserves_filter(facets, stub_llm):
+async def test_value_outside_facets_returns_no_match_and_preserves_filter(facets, stub_llm):
     """The core safety property: we never invent a token we weren't given."""
     stub_llm(
         {
@@ -59,7 +61,7 @@ def test_value_outside_facets_returns_no_match_and_preserves_filter(facets, stub
     active["Price"] = {"Min": "", "Max": "20000"}
     active["IsPrice"] = True
 
-    result = parse_message("only vistara and emirates", "oneway", facets, current_filter=active)
+    result = await parse_message("only vistara and emirates", "oneway", facets, current_filter=active)
 
     assert result["status"] == "no_match"
     assert result["message"] == msg.NO_MATCH
@@ -68,7 +70,7 @@ def test_value_outside_facets_returns_no_match_and_preserves_filter(facets, stub
     assert result["filter"]["Price"] == {"Min": "", "Max": "20000"}, "filter was not preserved"
 
 
-def test_applied_filter_sets_flags(facets, stub_llm):
+async def test_applied_filter_sets_flags(facets, stub_llm):
     stub_llm(
         {
             "has_filter_intent": True,
@@ -79,7 +81,7 @@ def test_applied_filter_sets_flags(facets, stub_llm):
             ],
         }
     )
-    result = parse_message("under 10k non-stop indigo", "oneway", facets)
+    result = await parse_message("under 10k non-stop indigo", "oneway", facets)
 
     assert result["status"] == "applied"
     assert result["message"] == ""
@@ -89,7 +91,7 @@ def test_applied_filter_sets_flags(facets, stub_llm):
     assert f["IsAirline"] and f["Airline"] == ["IndiGo"]
 
 
-def test_partial_application_applies_what_it_can(facets, stub_llm):
+async def test_partial_application_applies_what_it_can(facets, stub_llm):
     stub_llm(
         {
             "has_filter_intent": True,
@@ -99,7 +101,7 @@ def test_partial_application_applies_what_it_can(facets, stub_llm):
             ],
         }
     )
-    result = parse_message("under 10k on vistara", "oneway", facets)
+    result = await parse_message("under 10k on vistara", "oneway", facets)
 
     assert result["status"] == "applied"
     assert result["message"] == msg.PARTIAL
@@ -108,7 +110,7 @@ def test_partial_application_applies_what_it_can(facets, stub_llm):
     assert result["filter"]["Airline"] == []
 
 
-def test_amenity_booleans_are_never_gated_by_facets(facets, stub_llm):
+async def test_amenity_booleans_are_never_gated_by_facets(facets, stub_llm):
     stub_llm(
         {
             "has_filter_intent": True,
@@ -120,28 +122,28 @@ def test_amenity_booleans_are_never_gated_by_facets(facets, stub_llm):
         }
     )
     # Facets carry no amenity information at all - the live search has none.
-    result = parse_message("with wifi, refundable, red-eye", "oneway", facets)
+    result = await parse_message("with wifi, refundable, red-eye", "oneway", facets)
 
     assert result["status"] == "applied"
     f = result["filter"]
     assert f["IsWifi"] is True and f["Refundable"] is True and f["IsRedEyes"] is True
 
 
-def test_roundtrip_returns_two_elements(rt_facets, stub_llm):
+async def test_roundtrip_returns_two_elements(rt_facets, stub_llm):
     stub_llm(
         {
             "has_filter_intent": True,
             "ops": [{"action": "set", "field": "ArrTime", "range_max": "12:00", "legs": [1]}],
         }
     )
-    result = parse_message("return should land before noon", "roundtrip", rt_facets)
+    result = await parse_message("return should land before noon", "roundtrip", rt_facets)
 
     assert isinstance(result["filter"], list) and len(result["filter"]) == 2
     assert result["filter"][0]["IsArrTime"] is False
     assert result["filter"][1]["ArrTime"] == {"Min": "", "Max": "12:00"}
 
 
-def test_roundtrip_per_leg_facets(rt_facets, stub_llm):
+async def test_roundtrip_per_leg_facets(rt_facets, stub_llm):
     """Bhuj is a return-leg layover only; asking for it outbound must not stick."""
     stub_llm(
         {
@@ -149,23 +151,23 @@ def test_roundtrip_per_leg_facets(rt_facets, stub_llm):
             "ops": [{"action": "set", "field": "Layover", "values": ["Bhuj"], "legs": [0]}],
         }
     )
-    result = parse_message("via bhuj on the way out", "roundtrip", rt_facets)
+    result = await parse_message("via bhuj on the way out", "roundtrip", rt_facets)
     assert result["status"] == "no_match"
     assert result["filter"][0]["Layover"] == []
 
 
-def test_clear_all(facets, stub_llm):
+async def test_clear_all(facets, stub_llm):
     stub_llm({"has_filter_intent": True, "ops": [{"action": "clear_all"}]})
     active = empty_filter()
     active["Airline"] = ["IndiGo"]
     active["IsAirline"] = True
 
-    result = parse_message("clear all filters", "oneway", facets, current_filter=active)
+    result = await parse_message("clear all filters", "oneway", facets, current_filter=active)
     assert result["status"] == "applied"
     assert result["filter"] == empty_filter()
 
 
-def test_provider_failure_never_becomes_a_500(facets, monkeypatch):
+async def test_provider_failure_never_becomes_a_500(facets, monkeypatch):
     """Text that mimics our own schema makes the provider refuse to call the
     tool. That must leave the caller's filters intact, not crash the endpoint."""
     import src.service as service
@@ -180,13 +182,13 @@ def test_provider_failure_never_becomes_a_500(facets, monkeypatch):
     active["Airline"] = ["IndiGo"]
     active["IsAirline"] = True
 
-    result = parse_message("anything", "oneway", facets, current_filter=active)
+    result = await parse_message("anything", "oneway", facets, current_filter=active)
 
     assert result["status"] == "no_match"
     assert result["filter"]["Airline"] == ["IndiGo"], "filters lost on provider failure"
 
 
-def test_missing_api_key_is_still_a_configuration_error(facets, monkeypatch):
+async def test_missing_api_key_is_still_a_configuration_error(facets, monkeypatch):
     """A genuine misconfiguration must not hide behind the degrade path."""
     import src.service as service
 
@@ -195,10 +197,10 @@ def test_missing_api_key_is_still_a_configuration_error(facets, monkeypatch):
 
     monkeypatch.setattr(service, "get_structured_llm", _boom)
     with pytest.raises(ValueError, match="API key"):
-        parse_message("under 10k", "oneway", facets)
+        await parse_message("under 10k", "oneway", facets)
 
 
-def test_rejected_range_is_reported_alongside_a_successful_op(facets, stub_llm):
+async def test_rejected_range_is_reported_alongside_a_successful_op(facets, stub_llm):
     stub_llm(
         {
             "has_filter_intent": True,
@@ -208,7 +210,7 @@ def test_rejected_range_is_reported_alongside_a_successful_op(facets, stub_llm):
             ],
         }
     )
-    result = parse_message("non stop under -5000", "oneway", facets)
+    result = await parse_message("non stop under -5000", "oneway", facets)
     assert result["status"] == "applied"
     assert result["filter"]["Stop"] == [0]
     assert result["filter"]["Price"] == {"Min": "", "Max": ""}

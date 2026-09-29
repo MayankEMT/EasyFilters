@@ -61,7 +61,7 @@ def _describe_active(legs: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def parse_message(
+async def parse_message(
     message: str,
     trip_type: str,
     raw_facets: Any,
@@ -95,7 +95,7 @@ def parse_message(
 
     llm = get_structured_llm(provider, model)
     try:
-        patch = llm.invoke([("system", prompt["system"]), ("human", user_block)])
+        patch = await llm.ainvoke([("system", prompt["system"]), ("human", user_block)])
     except Exception:
         # A message can make the provider refuse to call the tool at all - text
         # that mimics our own schema does it reliably. Never let that reach the

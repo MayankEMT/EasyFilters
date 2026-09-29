@@ -42,10 +42,16 @@ def stub_llm(monkeypatch):
         patch = FilterPatch.model_validate(payload)
 
         class _Stub:
-            def invoke(self, _messages):
+            async def ainvoke(self, _messages):
                 return patch
 
         monkeypatch.setattr(service, "get_structured_llm", lambda *a, **k: _Stub())
         return patch
 
     return _install
+
+
+@pytest.fixture
+def anyio_backend():
+    """Run the async tests on asyncio only - anyio would otherwise also try trio."""
+    return "asyncio"
