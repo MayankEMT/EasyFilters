@@ -612,20 +612,61 @@ Liveness probe. Use it for monitoring.</pre>
       <h2><span class="n">04</span>Facets &mdash; the five lists you send</h2>
 
       <p>
-        Five fields, each a <strong>comma-separated string</strong>. These are the only values
-        we are permitted to write into the filter; whatever token you put here is echoed back
-        <strong>verbatim</strong>.
+        Five option lists, each a <strong>comma-separated string</strong>, plus the searched
+        sector. The lists are the only values we are permitted to write into the filter;
+        whatever token you put there is echoed back <strong>verbatim</strong>.
       </p>
 
       <div class="block">
         <div class="block-head">facets</div>
 <pre>{
+  "from":           "DEL",                 <span class="c">// the searched sector</span>
+  "to":             "BOM",
+
   "airline":        "IndiGo,Air India,AkasaAir,Air India Express,SpiceJet",
   "layover":        "HYD:Hyderabad,BLR:Bengaluru,AMD:Ahmedabad",
   "airCarftType":   "Boeing 737 (Narrow-body),Airbus A320 (Narrow-body)",
   "takeOffAirport": "DEL:New Delhi,DXN:Noida,HDO:Ghaziabad",
   "landingAirport": "BOM:Mumbai,NMI:Navi Mumbai"
 }</pre>
+      </div>
+
+      <h3><code>from</code> and <code>to</code> &mdash; the searched sector</h3>
+      <p>
+        A search covers a whole metro: DEL&ndash;BOM also returns flights from Noida and
+        Ghaziabad. Send the airport pair the traveller actually searched, so
+        <em>&ldquo;hide nearby airports&rdquo;</em> can be resolved &mdash; that phrase names no
+        airport, and the lists alone cannot say which of DEL/DXN/HDO was searched.
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Traveller says</th><th>Returned</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>&ldquo;hide nearby airports&rdquo; &middot; &ldquo;only the main airport&rdquo;</td>
+              <td class="mono">TakeOffAirport ["DEL"]<br>LandingAirport ["BOM"]</td>
+            </tr>
+            <tr>
+              <td>&ldquo;include nearby airports&rdquo; &middot; &ldquo;show all airports&rdquo;</td>
+              <td class="mono">both cleared</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Bare codes (<code>"DEL"</code>) or the <code>CODE:Label</code> form
+        (<code>"DEL:New Delhi"</code>) both work, and <code>origin</code> /
+        <code>destination</code> are accepted as aliases. On a roundtrip each leg carries its
+        own sector, reversed on the return.
+      </p>
+      <div class="note">
+        <span class="label">If you omit them</span>
+        <p>
+          Everything else works exactly as before &mdash; only the nearby-airports request
+          needs them. Asked for without a sector, it comes back as a reported miss rather than
+          silently doing nothing, so you will see it rather than wonder why the chip never
+          applies.
+        </p>
       </div>
 
       <h3>The <code>CODE:Label</code> form</h3>

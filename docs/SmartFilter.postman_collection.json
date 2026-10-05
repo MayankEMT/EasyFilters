@@ -1,0 +1,260 @@
+{
+  "info": {
+    "name": "Smart Flight Filter API",
+    "description": "Dev: http://aimltest1.easemytrip.com  (HTTP only - there is no HTTPS on this host yet, port 443 is closed. Use http:// or the requests will time out.)\n\nSet the baseUrl variable to switch between the dev VM and a local instance.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://aimltest1.easemytrip.com" }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+        "description": "Should return {\"status\":\"ok\"}. If this times out, the problem is the network path, not the API - check you are on http:// and not https://."
+      }
+    },
+    {
+      "name": "1. Applied - four preferences in one message",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json();",
+              "pm.test('status is applied', () => pm.expect(d.status).to.eql('applied'));",
+              "pm.test('price cap set', () => pm.expect(d.filter.Price.Max).to.eql('10000'));",
+              "pm.test('morning window set', () => pm.expect(d.filter.DepTime.Min).to.eql('06:00'));",
+              "pm.test('non-stop set', () => pm.expect(d.filter.Stop).to.eql([0]));",
+              "pm.test('airline set', () => pm.expect(d.filter.Airline).to.eql(['IndiGo']));",
+              "pm.test('flags match payloads', () => {",
+              "  pm.expect(d.filter.IsPrice).to.be.true;",
+              "  pm.expect(d.filter.IsStop).to.be.true;",
+              "  pm.expect(d.filter.IsLayover).to.be.false;",
+              "});",
+              "pm.collectionVariables.set('lastFilter', JSON.stringify(d.filter));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"show me flights under 10k, non stop, indigo, morning\",\n  \"tripType\": \"oneway\",\n  \"currentFilter\": null,\n  \"facets\": {\n    \"airline\": \"IndiGo,Air India,AkasaAir,Air India Express,SpiceJet\",\n    \"layover\": \"HYD:Hyderabad,BLR:Bengaluru,AMD:Ahmedabad\",\n    \"airCarftType\": \"Boeing 737 (Narrow-body),Airbus A320 (Narrow-body)\",\n    \"takeOffAirport\": \"DEL:New Delhi,DXN:Noida,HDO:Ghaziabad\",\n    \"landingAirport\": \"BOM:Mumbai,NMI:Navi Mumbai\"\n  }\n}"
+        },
+        "description": "The everyday case. Four preferences in one sentence, all applied."
+      }
+    },
+    {
+      "name": "2. Refinement - send the previous filter back",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json();",
+              "pm.test('earlier filters survived', () => {",
+              "  pm.expect(d.filter.Price.Max).to.eql('10000');",
+              "  pm.expect(d.filter.Airline).to.eql(['IndiGo']);",
+              "});",
+              "pm.test('new preference added', () => pm.expect(d.filter.Refundable).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"also make it refundable\",\n  \"tripType\": \"oneway\",\n  \"currentFilter\": {{lastFilter}},\n  \"facets\": {\n    \"airline\": \"IndiGo,Air India,AkasaAir,Air India Express,SpiceJet\",\n    \"layover\": \"HYD:Hyderabad,BLR:Bengaluru,AMD:Ahmedabad\",\n    \"airCarftType\": \"Boeing 737 (Narrow-body),Airbus A320 (Narrow-body)\",\n    \"takeOffAirport\": \"DEL:New Delhi,DXN:Noida,HDO:Ghaziabad\",\n    \"landingAirport\": \"BOM:Mumbai,NMI:Navi Mumbai\"\n  }\n}"
+        },
+        "description": "Run request 1 first - it saves its filter into the lastFilter variable, which this one sends back as currentFilter. Nothing the user did not mention should be lost."
+      }
+    },
+    {
+      "name": "3. Sort - a comparative word",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json();",
+              "pm.test('sets SortBy, not a guessed price', () => {",
+              "  pm.expect(d.filter.SortBy).to.eql('Cheapest');",
+              "  pm.expect(d.filter.Price.Max).to.eql('');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"cheapest flights\",\n  \"tripType\": \"oneway\",\n  \"facets\": { \"airline\": \"IndiGo,Air India,SpiceJet\" }\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Negation - no spicejet",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"no spicejet\",\n  \"tripType\": \"oneway\",\n  \"facets\": { \"airline\": \"IndiGo,Air India,AkasaAir,SpiceJet\" }\n}"
+        },
+        "description": "Returns the airlines that survive the exclusion, computed from the facets you sent."
+      }
+    },
+    {
+      "name": "5. no_match - value not in the facets",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json();",
+              "pm.test('no_match', () => pm.expect(d.status).to.eql('no_match'));",
+              "pm.test('message for the traveller', () => pm.expect(d.message).to.eql('No flights match this preference.'));",
+              "pm.test('filter untouched', () => pm.expect(d.filter.IsAirline).to.be.false);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"only vistara\",\n  \"tripType\": \"oneway\",\n  \"facets\": { \"airline\": \"IndiGo,Air India,SpiceJet\" }\n}"
+        }
+      }
+    },
+    {
+      "name": "6. no_match - no filter intent",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json();",
+              "pm.test('no_match', () => pm.expect(d.status).to.eql('no_match'));",
+              "pm.test('different message', () => pm.expect(d.message).to.eql('No filter change requested.'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"delhi to mumbai tomorrow\",\n  \"tripType\": \"oneway\",\n  \"facets\": { \"airline\": \"IndiGo,Air India,SpiceJet\" }\n}"
+        },
+        "description": "A search, not a filter. The caller's existing filter comes back untouched."
+      }
+    },
+    {
+      "name": "7. Roundtrip - per-leg targeting",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const d = pm.response.json();",
+              "pm.test('two legs returned', () => pm.expect(d.filter).to.have.lengthOf(2));",
+              "pm.test('outbound untouched', () => pm.expect(d.filter[0].IsArrTime).to.be.false);",
+              "pm.test('return leg targeted', () => pm.expect(d.filter[1].ArrTime.Max).to.eql('12:00'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"return should land before noon\",\n  \"tripType\": \"roundtrip\",\n  \"facets\": [\n    { \"airline\": \"IndiGo,Air India,SpiceJet\", \"layover\": \"HYD:Hyderabad,BLR:Bengaluru\" },\n    { \"airline\": \"IndiGo,SpiceJet\", \"layover\": \"AMD:Ahmedabad\" }\n  ]\n}"
+        },
+        "description": "facets must be a two-element array for roundtrip. Only leg 1 should change."
+      }
+    },
+    {
+      "name": "8. 400 - facets missing",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('rejects with 400', () => pm.response.to.have.status(400));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/smart-filter/parse",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "smart-filter", "parse"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"under 10k\",\n  \"tripType\": \"oneway\"\n}"
+        },
+        "description": "Facets are required. Never call this endpoint before a search has run."
+      }
+    }
+  ]
+}
