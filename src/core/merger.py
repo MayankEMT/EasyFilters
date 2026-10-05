@@ -17,6 +17,7 @@ from src.core.resolver import (
 from src.schema.filter_json import (
     BOOL_FIELDS,
     EXCLUDABLE_FIELDS,
+    NEARBY_FIELD,
     FACET_GATED_FIELDS,
     LIST_FIELDS,
     RANGE_FIELDS,
@@ -105,6 +106,31 @@ def apply(
                     leg[field] = False
                 elif field in SCALAR_FIELDS:
                     leg[field] = ""
+                applied += 1
+                continue
+
+            if field == NEARBY_FIELD:
+                # "hide nearby airports" names no airport - it means the one
+                # the traveller searched. Only the facets know which that is,
+                # so the model supplies the intent and we supply the tokens.
+                show_nearby = bool(op.get("flag")) if op.get("flag") is not None else False
+                if show_nearby:
+                    leg["TakeOffAirport"], leg["LandingAirport"] = [], []
+                    applied += 1
+                    continue
+                origin = leg_facets.sector_airport("from")
+                destination = leg_facets.sector_airport("to")
+                if origin is None and destination is None:
+                    # No sector was sent, so we cannot say which airport is the
+                    # searched one. Report it rather than returning "applied"
+                    # with nothing changed.
+                    if NEARBY_FIELD not in rejected:
+                        rejected.append(NEARBY_FIELD)
+                    continue
+                if origin is not None:
+                    leg["TakeOffAirport"] = [origin]
+                if destination is not None:
+                    leg["LandingAirport"] = [destination]
                 applied += 1
                 continue
 

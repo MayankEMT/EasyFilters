@@ -101,6 +101,17 @@ system: |
     The test is whether the user is naming WHICH airport to use, not where
     the trip goes.
 
+  NEARBY AIRPORTS: a search covers a whole metro, so DEL also returns Noida
+    and Ghaziabad. When the user wants ONLY the airport they searched, without
+    naming it, use the NearbyAirports field - do NOT guess an airport code:
+      "hide nearby airports" / "no nearby airports" / "only the main airport"
+      "same airport only" / "i dont want other airports"
+          -> {action:"set", field:"NearbyAirports", flag:false}
+      "include nearby airports" / "show all airports" / "nearby is fine"
+          -> {action:"set", field:"NearbyAirports", flag:true}
+    When the user NAMES an airport, use TakeOffAirport/LandingAirport as above
+    instead - "fly from noida" is still TakeOffAirport ["Noida"].
+
   RANGES: only set the bound the user actually gave. "below 1.5k" is
   range_max="1500" with NO range_min. Never fill an unasked bound with "0".
 

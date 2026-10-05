@@ -131,11 +131,19 @@ def shape(flight: Dict[str, Any]) -> Dict[str, Any]:
 CITY_NAMES: Dict[str, str] = {}
 
 
-def build_facets(flights: List[Dict[str, Any]]) -> Dict[str, str]:
+def build_facets(
+    flights: List[Dict[str, Any]],
+    origin: Optional[str] = None,
+    destination: Optional[str] = None,
+) -> Dict[str, str]:
     """The five lists the filter API needs, derived from the results.
 
     Emitted as "CODE:Label" wherever the token differs from the word a person
     would say, which is exactly the form the contract asks callers to send.
+
+    `from`/`to` carry the searched sector. The lists alone cannot say which of
+    DEL/DXN/HDO was searched, so without them "hide nearby airports" has nothing
+    to resolve against.
     """
     airlines, layovers, aircraft, origins, destinations = [], [], [], [], []
 
@@ -149,17 +157,23 @@ def build_facets(flights: List[Dict[str, Any]]) -> Dict[str, str]:
         for kind in f["aircraft"]:
             if kind not in aircraft:
                 aircraft.append(kind)
-        origin = f"{f['origin']}:{f['originCity']}" if f.get("originCity") else f["origin"]
-        if origin and origin not in origins:
-            origins.append(origin)
-        dest = (
+        # Named `from_token`/`to_token` so they cannot shadow the origin and
+        # destination parameters, which carry the searched sector.
+        from_token = (
+            f"{f['origin']}:{f['originCity']}" if f.get("originCity") else f["origin"]
+        )
+        if from_token and from_token not in origins:
+            origins.append(from_token)
+        to_token = (
             f"{f['destination']}:{f['destinationCity']}"
             if f.get("destinationCity") else f["destination"]
         )
-        if dest and dest not in destinations:
-            destinations.append(dest)
+        if to_token and to_token not in destinations:
+            destinations.append(to_token)
 
     facets = {
+        "from": origin or "",
+        "to": destination or "",
         "airline": ",".join(airlines),
         "layover": ",".join(layovers),
         "airCarftType": ",".join(aircraft),
@@ -398,9 +412,13 @@ async def search(req: SearchRequest):
     }
     payload["headline"] = headline(payload["outbound"])
     if facets_source:
-        payload["facets"] = build_facets(outbound)
+        payload["facets"] = build_facets(outbound, req.origin, req.destination)
         if inbound:
-            payload["facets"] = [build_facets(outbound), build_facets(inbound)]
+            payload["facets"] = [
+                build_facets(outbound, req.origin, req.destination),
+                # The return leg flies the sector backwards.
+                build_facets(inbound, req.destination, req.origin),
+            ]
         payload["ranges"] = build_ranges(outbound)
     return payload
 

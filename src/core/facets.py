@@ -16,12 +16,25 @@ already holds structured lists need not flatten them.
 Stop is deliberately absent: a stop count is a plain integer, so it needs no
 vocabulary. So are the price/duration/time ranges - comparative words like
 "cheapest" set SortBy now, so there is nothing left to measure against.
+
+Alongside the lists the caller sends the searched sector:
+
+    {"from": "DEL", "to": "CCU", ...}
+
+That is not a vocabulary - it is the one airport at each end the traveller
+actually searched for. It exists so "hide nearby airports" can be resolved: the
+phrase names no airport, and the lists alone cannot say which of DEL/DXN/HDO was
+the searched one.
 """
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.schema.filter_json import FACET_GATED_FIELDS, FACET_KEY_FOR_FIELD
 
 LIST_FACET_KEYS = tuple(FACET_KEY_FOR_FIELD[f] for f in FACET_GATED_FIELDS)
+
+# The searched origin and destination. Aliases are accepted because the naming
+# is the caller's to choose and tolerating both costs a dict lookup.
+SECTOR_KEYS = {"from": ("from", "origin"), "to": ("to", "destination")}
 
 
 class FacetError(ValueError):
@@ -82,8 +95,18 @@ class LegFacets:
     def __init__(self, raw: Dict[str, Any]):
         self.values: Dict[str, List[Dict[str, Any]]] = {}
         self._lookup: Dict[str, Dict[str, Any]] = {}
+        self.sector: Dict[str, Any] = {}
 
         raw = raw if isinstance(raw, dict) else {}
+
+        for end, aliases in SECTOR_KEYS.items():
+            for alias in aliases:
+                entries = _entries(raw.get(alias)) if alias in raw else []
+                if entries:
+                    # One airport per end; "DEL" and "DEL:New Delhi" both work
+                    # because _entries already splits on the colon.
+                    self.sector[end] = entries[0]["value"]
+                    break
 
         for key in LIST_FACET_KEYS:
             if key not in raw:
@@ -100,6 +123,19 @@ class LegFacets:
 
     def has_any(self) -> bool:
         return bool(self.values)
+
+    def sector_airport(self, end: str) -> Optional[Any]:
+        """The searched airport at one end: "from" or "to".
+
+        Returned as the caller's own token where the matching airport list was
+        sent, so the spelling matches the rest of the filter; otherwise the raw
+        sector value, which is still the caller's own.
+        """
+        value = self.sector.get(end)
+        if value is None:
+            return None
+        facet_key = "takeOffAirport" if end == "from" else "landingAirport"
+        return self.resolve(facet_key, value) or value
 
     def allowed_values(self, facet_key: str) -> List[Any]:
         return [e["value"] for e in self.values.get(facet_key, [])]

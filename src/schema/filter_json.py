@@ -35,6 +35,11 @@ FACET_GATED_FIELDS = (
 # Implausible stop counts are rejected rather than passed through.
 MAX_STOPS = 3
 
+# A pseudo-field: the model uses it to say "only the airports I searched", and
+# the merger turns that into TakeOffAirport/LandingAirport from the caller's
+# sector. It is never a key in the emitted filter.
+NEARBY_FIELD = "NearbyAirports"
+
 # Fields where "not X" is rewritten as "everything except X", using the facet
 # list as the set of possibilities.
 #

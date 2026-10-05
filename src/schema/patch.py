@@ -25,6 +25,10 @@ OpField = Literal[
     "IsWifi",
     "IsRedEyes",
     "SortBy",
+    # Not an output field. A sector-level intent the server turns into
+    # TakeOffAirport/LandingAirport, because only the caller's facets know which
+    # airport was actually searched.
+    "NearbyAirports",
 ]
 
 SortValue = Literal[
@@ -91,7 +95,12 @@ class FilterOp(BaseModel):
         ),
     )
     flag: Optional[bool] = Field(
-        None, description="For Refundable, IsWifi, IsRedEyes: the boolean to set."
+        None,
+        description=(
+            "For Refundable, IsWifi, IsRedEyes: the boolean to set. For "
+            "NearbyAirports: false to restrict to the searched airports "
+            "('hide nearby airports'), true to allow them all again."
+        ),
     )
     legs: Optional[List[int]] = Field(
         None,
