@@ -11,6 +11,12 @@ from typing import Any, Dict, List
 # either bound is set.
 RANGE_FIELDS = ("Price", "DepTime", "ArrTime", "Duration")
 
+# Range fields where zero is a meaningful floor, so an upper bound on its own
+# can be completed with "0" - the consuming filter wants both bounds present.
+# Deliberately excludes DepTime/ArrTime: "00:00" is a real time of day, not an
+# absence, and "arrive before noon" must not become "between midnight and noon".
+ZERO_FLOOR_FIELDS = ("Price", "Duration")
+
 # Fields carrying a list of values.
 LIST_FIELDS = (
     "Stop",

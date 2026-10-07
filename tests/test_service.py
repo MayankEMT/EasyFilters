@@ -67,7 +67,7 @@ async def test_value_outside_facets_returns_no_match_and_preserves_filter(facets
     assert result["message"] == msg.NO_MATCH
     assert result["filter"]["Airline"] == []
     assert result["filter"]["IsAirline"] is False
-    assert result["filter"]["Price"] == {"Min": "", "Max": "20000"}, "filter was not preserved"
+    assert result["filter"]["Price"] == {"Min": "0", "Max": "20000"}, "filter was not preserved"
 
 
 async def test_applied_filter_sets_flags(facets, stub_llm):
@@ -86,7 +86,7 @@ async def test_applied_filter_sets_flags(facets, stub_llm):
     assert result["status"] == "applied"
     assert result["message"] == ""
     f = result["filter"]
-    assert f["IsPrice"] and f["Price"] == {"Min": "", "Max": "10000"}
+    assert f["IsPrice"] and f["Price"] == {"Min": "0", "Max": "10000"}
     assert f["IsStop"] and f["Stop"] == [0]
     assert f["IsAirline"] and f["Airline"] == ["IndiGo"]
 
@@ -106,7 +106,7 @@ async def test_partial_application_applies_what_it_can(facets, stub_llm):
     assert result["status"] == "applied"
     assert result["message"] == msg.PARTIAL
     assert result["message"] != msg.NO_MATCH, "partial must read differently from total failure"
-    assert result["filter"]["Price"] == {"Min": "", "Max": "10000"}
+    assert result["filter"]["Price"] == {"Min": "0", "Max": "10000"}
     assert result["filter"]["Airline"] == []
 
 

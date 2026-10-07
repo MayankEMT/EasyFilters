@@ -11,6 +11,7 @@ from src.schema.filter_json import (
     LIST_FIELDS,
     RANGE_FIELDS,
     SCALAR_FIELDS,
+    ZERO_FLOOR_FIELDS,
     empty_filter,
     flag_name,
 )
@@ -25,6 +26,12 @@ def _finalise_leg(leg: Dict[str, Any]) -> Dict[str, Any]:
         payload = leg.get(field) or {}
         lo = "" if payload.get("Min") in (None, "") else str(payload["Min"])
         hi = "" if payload.get("Max") in (None, "") else str(payload["Max"])
+        if not lo and hi and field in ZERO_FLOOR_FIELDS:
+            # "under 5000" is a range from nothing to 5000, and the consuming
+            # filter wants both bounds present. Only where zero is a real floor:
+            # a time field has no such floor, and "arrive before noon" must not
+            # become "between midnight and noon".
+            lo = "0"
         out[field] = {"Min": lo, "Max": hi}
         out[flag_name(field)] = bool(lo or hi)
 

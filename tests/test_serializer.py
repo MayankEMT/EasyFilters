@@ -112,3 +112,38 @@ def test_roundtrip_is_two_elements():
     out = serialize([empty_filter(), empty_filter()], roundtrip=True)
     assert isinstance(out, list) and len(out) == 2
     assert out[0] == SPEC_TEMPLATE
+
+
+def test_an_upper_bound_alone_gets_a_zero_floor():
+    """"under 5000" is 0..5000 - the consuming filter wants both bounds."""
+    leg = empty_filter()
+    leg["Price"] = {"Min": "", "Max": "5000"}
+    leg["Duration"] = {"Min": "", "Max": "120"}
+    out = serialize([leg], roundtrip=False)
+    assert out["Price"] == {"Min": "0", "Max": "5000"}
+    assert out["Duration"] == {"Min": "0", "Max": "120"}
+
+
+def test_times_never_get_a_zero_floor():
+    """"arrive before noon" must not become "between midnight and noon"."""
+    leg = empty_filter()
+    leg["ArrTime"] = {"Min": "", "Max": "12:00"}
+    leg["DepTime"] = {"Min": "", "Max": "18:00"}
+    out = serialize([leg], roundtrip=False)
+    assert out["ArrTime"] == {"Min": "", "Max": "12:00"}
+    assert out["DepTime"] == {"Min": "", "Max": "18:00"}
+
+
+def test_an_unset_range_stays_fully_empty():
+    """No upper bound means no filter at all, so no floor is invented."""
+    out = serialize([empty_filter()], roundtrip=False)
+    assert out["Price"] == {"Min": "", "Max": ""}
+    assert out["IsPrice"] is False
+
+
+def test_a_lower_bound_alone_is_left_alone():
+    """"above 5000" has no upper bound to invent."""
+    leg = empty_filter()
+    leg["Price"] = {"Min": "5000", "Max": ""}
+    out = serialize([leg], roundtrip=False)
+    assert out["Price"] == {"Min": "5000", "Max": ""}

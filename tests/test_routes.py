@@ -80,5 +80,5 @@ def test_successful_parse_shape(client, patched_llm):
     assert set(body.keys()) == {"status", "filter", "message"}
     assert body["status"] == "applied"
     assert body["filter"]["IsPrice"] is True
-    assert body["filter"]["Price"] == {"Min": "", "Max": "10000"}
+    assert body["filter"]["Price"] == {"Min": "0", "Max": "10000"}
     assert len(body["filter"]) == 25
