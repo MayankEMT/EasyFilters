@@ -82,3 +82,32 @@ def test_successful_parse_shape(client, patched_llm):
     assert body["filter"]["IsPrice"] is True
     assert body["filter"]["Price"] == {"Min": "0", "Max": "10000"}
     assert len(body["filter"]) == 25
+
+
+CORS_CASES = [
+    ("https://www.easemytrip.com", True),
+    ("https://easemytrip.com", True),
+    ("https://m.easemytrip.com", True),
+    ("https://staginghotelang.easemytrip.com", True),
+    ("http://localhost:3000", True),
+    ("https://evil.example.com", False),
+    # The two that a naive "contains easemytrip.com" check would wave through.
+    ("https://easemytrip.com.evil.com", False),
+    ("https://evil-easemytrip.com", False),
+    ("http://www.easemytrip.com", False),
+]
+
+
+@pytest.mark.parametrize("origin,allowed", CORS_CASES)
+def test_cors_allows_only_our_own_origins(origin, allowed):
+    client = TestClient(main.app)
+    response = client.options(
+        "/api/smart-filter/parse",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    got = "access-control-allow-origin" in {k.lower() for k in response.headers}
+    assert got is allowed, f"{origin} should be {'allowed' if allowed else 'blocked'}"
