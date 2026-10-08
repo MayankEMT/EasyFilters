@@ -17,7 +17,10 @@ app = FastAPI(title="EasyFilters - Smart Flight Filter API")
 # auth header, and with it True Starlette cannot send a literal "*" for any
 # future wildcard. Narrow this regex before ever turning it on.
 ALLOWED_ORIGIN_REGEX = (
-    r"https://([a-z0-9-]+\.)*easemytrip\.com"
+    # (?i) because a hostname is case-insensitive. Browsers lowercase the Origin
+    # header so this should never matter, but it costs nothing and removes a
+    # trap for any non-browser caller.
+    r"(?i)https://([a-z0-9-]+\.)*easemytrip\.com"
     r"|http://localhost(:\d+)?"
     r"|http://127\.0\.0\.1(:\d+)?"
 )
