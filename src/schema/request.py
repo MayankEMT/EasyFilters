@@ -25,17 +25,7 @@ class FilterParseRequest(BaseModel):
         alias="currentFilter",
         description="The previous response's `filter`, for cumulative refinement.",
     )
-    # Accepted and ignored. The server decides which provider and model to use,
-    # and falls back on its own if the first is unhealthy - a public caller
-    # choosing the model means a public caller choosing what we pay per request.
-    # Still accepted rather than removed because `extra="forbid"` below would
-    # otherwise turn an existing caller's request into a 422.
-    provider: Optional[str] = Field(
-        None, description="Ignored. The server selects the provider."
-    )
-    model: Optional[str] = Field(None, description="Ignored. The server selects the model.")
-
-    model_config = ConfigDict(populate_by_name=True, extra="forbid", protected_namespaces=())
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class FilterParseResponse(BaseModel):

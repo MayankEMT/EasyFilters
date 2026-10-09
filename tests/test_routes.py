@@ -111,3 +111,24 @@ def test_cors_allows_only_our_own_origins(origin, allowed):
     )
     got = "access-control-allow-origin" in {k.lower() for k in response.headers}
     assert got is allowed, f"{origin} should be {'allowed' if allowed else 'blocked'}"
+
+
+def test_the_request_has_no_model_or_provider_knob(client):
+    """The server decides where a request goes; the caller cannot ask.
+
+    Sent anyway, the 422 names the fields, which is more useful to whoever is
+    integrating than silently ignoring them would be.
+    """
+    response = client.post(
+        "/api/smart-filter/parse",
+        json={
+            "message": "under 10k",
+            "tripType": "oneway",
+            "facets": FACETS,
+            "provider": "openai",
+            "model": "gpt-4o",
+        },
+    )
+    assert response.status_code == 422
+    rejected = {".".join(str(p) for p in e["loc"]) for e in response.json()["detail"]}
+    assert rejected == {"body.provider", "body.model"}
