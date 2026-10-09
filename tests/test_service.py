@@ -215,3 +215,88 @@ async def test_rejected_range_is_reported_alongside_a_successful_op(facets, stub
     assert result["filter"]["Stop"] == [0]
     assert result["filter"]["Price"] == {"Min": "", "Max": ""}
     assert result["message"] == msg.PARTIAL, "dropped bound vanished silently"
+
+
+async def test_the_caller_cannot_choose_the_provider_or_model(facets, stub_llm, monkeypatch):
+    """A public endpoint choosing our model means a public caller choosing our bill."""
+    import src.service as service
+
+    stub_llm({"has_filter_intent": True,
+              "ops": [{"action": "set", "field": "Price", "range_max": "10000"}]})
+    seen = {}
+    original = service.get_structured_llm
+
+    def _record(*args, **kwargs):
+        seen["args"], seen["kwargs"] = args, kwargs
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(service, "get_structured_llm", _record)
+    result = await parse_message("under 10k", "oneway", facets)
+
+    assert result["status"] == "applied"
+    assert not seen["args"] and not seen["kwargs"], (
+        "the caller's provider/model reached the LLM factory"
+    )
+
+
+async def test_a_failing_provider_falls_back_to_the_other(facets, monkeypatch):
+    """A Groq rate limit used to read as "No filter change requested"."""
+    import src.service as service
+    from src.schema.patch import FilterOp, FilterPatch
+
+    patch = FilterPatch(has_filter_intent=True,
+                        ops=[FilterOp(action="set", field="Price", range_max="10000")])
+
+    class _Primary:
+        async def ainvoke(self, _messages):
+            raise RuntimeError("429 rate limit exceeded")
+
+    class _Backup:
+        async def ainvoke(self, _messages):
+            return patch
+
+    calls = []
+
+    def _factory(provider=None, llm_name=None):
+        calls.append(provider)
+        return _Backup() if provider else _Primary()
+
+    monkeypatch.setattr(service, "get_structured_llm", _factory)
+    monkeypatch.setattr(service, "fallback_provider", lambda: "openai")
+
+    result = await parse_message("under 10k", "oneway", facets)
+    assert result["status"] == "applied", "the fallback did not rescue the request"
+    assert result["filter"]["Price"]["Max"] == "10000"
+    assert calls == [None, "openai"], "the backup provider was not used"
+
+
+async def test_with_no_fallback_configured_it_degrades_as_before(facets, monkeypatch):
+    import src.service as service
+
+    class _Dead:
+        async def ainvoke(self, _messages):
+            raise RuntimeError("429 rate limit exceeded")
+
+    monkeypatch.setattr(service, "get_structured_llm", lambda *a, **k: _Dead())
+    monkeypatch.setattr(service, "fallback_provider", lambda: None)
+
+    result = await parse_message("under 10k", "oneway", facets)
+    assert result["status"] == "no_match"
+    assert result["filter"]["IsPrice"] is False
+
+
+async def test_both_providers_failing_still_leaves_filters_untouched(facets, monkeypatch):
+    import src.service as service
+
+    active = {"IsAirline": True, "Airline": ["IndiGo"]}
+
+    class _Dead:
+        async def ainvoke(self, _messages):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(service, "get_structured_llm", lambda *a, **k: _Dead())
+    monkeypatch.setattr(service, "fallback_provider", lambda: "openai")
+
+    result = await parse_message("under 10k", "oneway", facets, current_filter=active)
+    assert result["status"] == "no_match"
+    assert result["filter"]["Airline"] == ["IndiGo"], "the caller's filter was lost"

@@ -19,8 +19,6 @@ async def parse_filter(req: FilterParseRequest):
             trip_type=req.trip_type,
             raw_facets=req.facets,
             current_filter=req.current_filter,
-            provider=req.provider,
-            model=req.model,
         )
     except FacetError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

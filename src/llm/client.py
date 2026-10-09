@@ -54,6 +54,19 @@ class LLMFactory:
         )
 
 
+def fallback_provider() -> str | None:
+    """The other provider, if it is configured. None when there is nowhere to go.
+
+    Kept here rather than in the service so the knowledge of which providers
+    exist, and whether their keys are set, stays in one file.
+    """
+    if LLM_PROVIDER == PROVIDER_GROQ and OPENAI_API_KEY:
+        return PROVIDER_OPENAI
+    if LLM_PROVIDER == PROVIDER_OPENAI and GROQ_API_KEY:
+        return PROVIDER_GROQ
+    return None
+
+
 @lru_cache(maxsize=8)
 def get_structured_llm(provider: str = None, llm_name: str = None):
     """A model bound to the FilterPatch schema. Cached per provider/model."""

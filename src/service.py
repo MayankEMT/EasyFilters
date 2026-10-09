@@ -9,7 +9,7 @@ import yaml
 from src.core import facets as facets_mod
 from src.core.merger import apply as apply_ops
 from src.core.serializer import serialize
-from src.llm.client import get_structured_llm
+from src.llm.client import fallback_provider, get_structured_llm
 from src.schema.filter_json import as_legs, is_roundtrip
 from src.utils import messages as msg
 
@@ -61,13 +61,39 @@ def _describe_active(legs: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+async def _extract(messages, text: str):
+    """Run the extraction, falling back to the other provider if the first fails.
+
+    Without this, a Groq rate limit surfaced to the traveller as "No filter
+    change requested" - the box appeared to stop understanding them, with
+    nothing anywhere saying why. The second provider is a server-side decision;
+    the caller has no say in where their request goes.
+
+    Raises if every provider fails, which parse_message turns into the usual
+    leave-their-filters-alone response.
+    """
+    primary = get_structured_llm()
+    try:
+        return await primary.ainvoke(messages)
+    except Exception as first_error:
+        backup_provider = fallback_provider()
+        if backup_provider is None:
+            raise
+        # Logged at error, not warning: this one costs money and means the
+        # primary provider is unhealthy. It should be visible.
+        logger.error(
+            "primary LLM failed, falling back to %s: %s", backup_provider, first_error,
+            exc_info=True,
+        )
+        backup = get_structured_llm(provider=backup_provider)
+        return await backup.ainvoke(messages)
+
+
 async def parse_message(
     message: str,
     trip_type: str,
     raw_facets: Any,
     current_filter: Any = None,
-    provider: str = None,
-    model: str = None,
 ) -> Dict[str, Any]:
     """Turn a chat message into the filter JSON.
 
@@ -93,15 +119,22 @@ async def parse_message(
         message=text,
     )
 
-    llm = get_structured_llm(provider, model)
+    messages = [("system", prompt["system"]), ("human", user_block)]
     try:
-        patch = await llm.ainvoke([("system", prompt["system"]), ("human", user_block)])
+        patch = await _extract(messages, text)
+    except ValueError:
+        # A misconfiguration - missing key, unknown provider - is a fault to
+        # fix, not a transient failure. It must not hide behind the degrade
+        # path below, where it would look like every traveller had simply
+        # stopped making sense.
+        raise
     except Exception:
-        # A message can make the provider refuse to call the tool at all - text
-        # that mimics our own schema does it reliably. Never let that reach the
-        # caller as a 500: leave their filters untouched and say nothing changed.
-        # Missing keys / bad provider names raise ValueError earlier, from
-        # LLMFactory, and are still reported as a configuration fault.
+        # Every provider refused or failed. A message can make a provider refuse
+        # to call the tool at all - text that mimics our own schema does it
+        # reliably - so never let that reach the caller as a 500: leave their
+        # filters untouched and say nothing changed. Missing keys raise
+        # ValueError earlier, from LLMFactory, and are still a configuration
+        # fault.
         logger.warning("filter extraction failed for message=%r", text[:200], exc_info=True)
         return {
             "status": "no_match",
